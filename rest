@@ -1,1 +1,85 @@
 https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DataFactory/factories/{factoryName}/pipelineruns/{runId}/activityruns?api-version=2018-06-01
+
+
+
+import requests
+
+# Azure AD and ADF configurations
+tenant_id = "<YOUR_TENANT_ID>"
+client_id = "<YOUR_CLIENT_ID>"
+client_secret = "<YOUR_CLIENT_SECRET>"
+subscription_id = "<YOUR_SUBSCRIPTION_ID>"
+resource_group_name = "<YOUR_RESOURCE_GROUP_NAME>"
+factory_name = "<YOUR_FACTORY_NAME>"
+pipeline_name = "<YOUR_PIPELINE_NAME>"
+
+# 1. Get the OAuth2 Token
+def get_access_token(tenant_id, client_id, client_secret):
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/token"
+    payload = {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "resource": "https://management.azure.com/"
+    }
+    
+    response = requests.post(url, data=payload)
+    
+    if response.status_code == 200:
+        return response.json().get("access_token")
+    else:
+        raise Exception(f"Failed to get access token: {response.text}")
+
+# 2. Get Pipeline Runs
+def get_pipeline_runs(subscription_id, resource_group_name, factory_name, access_token):
+    url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.DataFactory/factories/{factory_name}/pipelineruns?api-version=2018-06-01"
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.json().get("value", [])
+    else:
+        raise Exception(f"Failed to get pipeline runs: {response.text}")
+
+# 3. Get Activity Runs by Pipeline Run ID
+def get_activity_runs(subscription_id, resource_group_name, factory_name, run_id, access_token):
+    url = f"https://management.azure.com/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.DataFactory/factories/{factory_name}/pipelineruns/{run_id}/activityruns?api-version=2018-06-01"
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.json().get("value", [])
+    else:
+        raise Exception(f"Failed to get activity runs: {response.text}")
+
+# Main function
+if __name__ == "__main__":
+    try:
+        # Step 1: Get the access token
+        access_token = get_access_token(tenant_id, client_id, client_secret)
+        print("Access token acquired.")
+        
+        # Step 2: Fetch pipeline runs
+        pipeline_runs = get_pipeline_runs(subscription_id, resource_group_name, factory_name, access_token)
+        
+        for run in pipeline_runs:
+            run_id = run.get("runId")
+            pipeline_name = run.get("pipelineName")
+            print(f"Pipeline Name: {pipeline_name}, Run ID: {run_id}")
+            
+            # Step 3: Fetch activity runs for each pipeline run
+            activity_runs = get_activity_runs(subscription_id, resource_group_name, factory_name, run_id, access_token)
+            
+            for activity in activity_runs:
+                print(f"Activity Name: {activity.get('activityName')}, Activity Type: {activity.get('activityType')}, Status: {activity.get('status')}")
+                
+    except Exception as e:
+        print(f"Error: {str(e)}")
