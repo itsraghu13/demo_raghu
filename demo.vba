@@ -1,3 +1,15 @@
+
+
+
+SELECT 
+    CONCAT_WS(' | ', TRANSFORM(map_keys(parameters), k -> CONCAT(k, ':', parameters[k]))) AS parameters_str
+FROM your_table
+
+
+
+
+
+
 # Define the columns you want to select
 select_cols = [
     'pipelineName as pipeline_name',
