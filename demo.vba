@@ -1,3 +1,81 @@
+# Define the list of columns you want to select
+select_cols = [
+    'pipelineName as pipeline_name',
+    'runid as run_id',
+    'date_format(runStart, "yyyy-MM-dd HH:mm:ss") as start_time',
+    'date_format(runEnd, "yyyy-MM-dd HH:mm:ss") as end_time',
+    'message as error',
+    'status'
+]
+
+# Convert map `parameters` to array of structs for inlining
+parameter_cols = [
+    f"TRANSFORM(map_keys(parameters), map_values(parameters), (k, v) -> NAMED_STRUCT('key', k, 'value', v)) AS parameters"
+]
+
+# Build the SQL query
+sql_query = f"""
+SELECT {', '.join(select_cols)},
+       inline({parameter_cols[0]}) AS parameters,  -- Use inline on transformed array of structs
+       CONCAT(
+           CAST(FLOOR(durationInMs / 60000) AS STRING), ' min ',
+           CAST(FLOOR((durationInMs % 60000) / 1000) AS STRING), ' sec'
+       ) as duration,
+       current_date() as requested_date,
+       '{subscription_id}' as subscription_id,
+       '{factory_name}' as factory_name,
+       '{resource_group_name}' as resource_group_name
+FROM tempDF
+"""
+
+# Execute the query
+df_combined = spark.sql(sql_query)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from typing import List
 from pyspark.sql import SparkSession, DataFrame
 
