@@ -1,3 +1,64 @@
+# Define the columns you want to select
+select_cols = [
+    'pipelineName as pipeline_name',
+    'runid as run_id',
+    'date_format(runStart, "yyyy-MM-dd HH:mm:ss") as start_time',
+    'date_format(runEnd, "yyyy-MM-dd HH:mm:ss") as end_time',
+    'message as error',
+    'status'
+]
+
+# Construct the SQL query
+sql_query = f"""
+SELECT {', '.join(select_cols)},
+       inline(MAP_ENTRIES(parameters)) AS key, value,  -- Convert map to array of structs and inline it
+       CONCAT(
+           CAST(FLOOR(durationInMs / 60000) AS STRING), ' min ',
+           CAST(FLOOR((durationInMs % 60000) / 1000) AS STRING), ' sec'
+       ) as duration,
+       current_date() as requested_date,
+       '{subscription_id}' as subscription_id,
+       '{factory_name}' as factory_name,
+       '{resource_group_name}' as resource_group_name
+FROM tempDF
+"""
+
+# Execute the query
+df_combined = spark.sql(sql_query)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Define the columns you want to select, as well as the necessary transformation and inline logic
 select_cols = [
