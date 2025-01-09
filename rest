@@ -1,3 +1,78 @@
+
+i = 1
+check_date = '2010-12-23'
+start_product_id = 972 # provide a specific id 
+# bill_df corresponds to the "BOM_CTE" clause in the above query
+df = spark.sql(f"""
+SELECT b.ProductAssemblyID
+  , b.ComponentID
+  , p.Name
+  , b.PerAssemblyQty
+  , p.StandardCost
+  , p.ListPrice
+  , b.BOMLevel
+  , 0 as RecursionLevel 
+FROM BillOfMaterials b
+    INNER JOIN Product p ON b.ComponentID = p.ProductID
+WHERE b.ProductAssemblyID = {start_product_id} AND '{check_date}' >= b.StartDate AND '{check_date}' <= IFNULL(b.EndDate, '{check_date}')
+""")
+
+# this view is our 'CTE' that we reference with each pass
+df.createOrReplaceTempView('recursion_df')
+
+while True:
+  # select data for this recursion level
+  bill_df = spark.sql(f"""
+  SELECT b.ProductAssemblyID
+    , b.ComponentID
+    , p.Name
+    , b.PerAssemblyQty
+    , p.StandardCost
+    , p.ListPrice
+    , b.BOMLevel
+    , {i} as RecursionLevel 
+  FROM recursion_df cte
+      INNER JOIN BillOfMaterials b ON b.ProductAssemblyID = cte.ComponentID
+      INNER JOIN Product p ON b.ComponentID = p.ProductID
+  WHERE '{check_date}' >= b.StartDate AND '{check_date}' <= IFNULL(b.EndDate, '{check_date}')
+  """)
+  
+  # this view is our 'CTE' that we reference with each pass
+  bill_df.createOrReplaceTempView('recursion_df')
+  # add the results to the main output dataframe
+  df = df.union(bill_df)
+  # if there are no results at this recursion level then break
+  if bill_df.count() == 0:
+      df.createOrReplaceTempView("final_df")
+      break
+  else:
+      i += 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DataFactory/factories/{factoryName}/pipelineruns/{runId}/activityruns?api-version=2018-06-01
 
 
