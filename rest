@@ -1,3 +1,65 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, lit
+
+# Initialize SparkSession
+spark = SparkSession.builder.master("local").appName("Hierarchy Levels").getOrCreate()
+
+# Sample data
+data = [
+    (1, "Alice", None),  # Root employee
+    (2, "Bob", 1),       # Reports to Alice
+    (3, "Charlie", 2),   # Reports to Bob
+    (4, "David", 1),     # Reports to Alice
+    (5, "Eve", 3)        # Reports to Charlie
+]
+
+columns = ["userId", "userName", "managerId"]
+
+# Create DataFrame
+df = spark.createDataFrame(data, columns)
+
+# Initialize root employee, set EmpLevel to 0
+df_levels = df.filter(col("managerId").isNull()).withColumn("EmpLevel", lit(0))
+
+# Create a DataFrame to hold the results as they are built up
+final_df = df_levels
+
+# Iteratively process subordinates
+max_iterations = 10  # Adjust based on expected maximum depth
+has_new_levels = True
+
+for _ in range(max_iterations):
+    if not has_new_levels:
+        break
+    
+    # Identify subordinates of employees whose levels have already been calculated
+    df_new_levels = (
+        df.alias("emp")
+        .join(df_levels.alias("mgr"), col("emp.managerId") == col("mgr.userId"), "inner")
+        .select(
+            col("emp.userId"),
+            col("emp.userName"),
+            col("emp.managerId"),
+            (col("mgr.EmpLevel") + 1).alias("EmpLevel")
+        )
+    )
+    
+    # If no new levels are calculated, set the flag to false to break the loop
+    if df_new_levels.rdd.isEmpty():
+        has_new_levels = False
+    else:
+        # Append the new levels to the final result set
+        final_df = final_df.union(df_new_levels)
+        
+        # Update df_levels to include only the newly calculated levels for the next iteration
+        df_levels = df_new_levels
+
+# Final result
+final_df.orderBy("EmpLevel", "userId").show()
+
+
+
+
 
 i = 1
 check_date = '2010-12-23'
