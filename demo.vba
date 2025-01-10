@@ -1,4 +1,81 @@
 from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+
+def recursive_pipeline_search(df, initial_pipeline_run_id, max_depth=10):
+  """
+  Performs a recursive search through a DataFrame with pipeline_run_id and invokedById columns.
+
+  Args:
+    df: The input DataFrame.
+    initial_pipeline_run_id: The starting pipeline_run_id value.
+    max_depth: Maximum recursion depth to prevent infinite loops.
+
+  Returns:
+    A new DataFrame with columns pipeline_run_id, invokedById, and recursion_level.
+  """
+
+  # Create a window specification for ordering
+  window = Window.orderBy("recursion_level")
+
+  # Initialize the DataFrame with the initial pipeline_run_id
+  result_df = df.filter(F.col("pipeline_run_id") == initial_pipeline_run_id).withColumn("recursion_level", F.lit(0))
+
+  for i in range(1, max_depth + 1):
+    # Join the current result with the original DataFrame
+    joined_df = result_df.join(
+        df,
+        F.col("invokedById") == F.col("pipeline_run_id"),
+        how="left"
+    )
+
+    # Filter for new matches and add recursion level
+    new_matches = joined_df.filter(F.col("pipeline_run_id_right").isNotNull()).select(
+        F.col("pipeline_run_id_right").alias("pipeline_run_id"),
+        F.col("invokedById_right").alias("invokedById"),
+        F.lit(i).alias("recursion_level")
+    )
+
+    # Union new matches with existing results
+    result_df = result_df.union(new_matches)
+
+    # Check if any new matches were found
+    if new_matches.count() == 0:
+      break
+
+  # Order the final result by recursion level
+  return result_df.orderBy("recursion_level")
+
+# Example usage
+# Assuming 'df' is your DataFrame with 'pipeline_run_id' and 'invokedById' columns
+initial_pipeline_run_id = 1 
+result_df = recursive_pipeline_search(df, initial_pipeline_run_id)
+
+# Show the results
+result_df.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from pyspark.sql import functions as F
 
 # Sample Data
 data = [
