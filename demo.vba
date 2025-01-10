@@ -26,7 +26,11 @@ def recursive_pipeline_search(df, initial_pipeline_run_id, max_depth=10):
         df,
         F.col("invokedById") == F.col("pipeline_run_id"),
         how="left"
+    ).where(
+        (F.col("invokedById").isNotNull() & F.col("pipeline_run_id").isNotNull()) | 
+        (F.col("invokedById").isNull() & F.col("pipeline_run_id").isNull())
     )
+
 
     # Filter for new matches and add recursion level
     new_matches = joined_df.filter(F.col("pipeline_run_id_right").isNotNull()).select(
