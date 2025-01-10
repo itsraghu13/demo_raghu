@@ -1,3 +1,33 @@
+start_id = "A"  # Initial starting id1 value
+recursion_level = 0
+
+# Initialize the first DataFrame with the starting id1
+df_result = spark.sql(f"SELECT '{start_id}' as id1, NULL as id2, {recursion_level} as recursion_level")
+df_result.createOrReplaceTempView("result_df")
+
+while True:
+    # Get the next level of matches
+    df_next = spark.sql("""
+        SELECT t.id1, t.id2, {recursion_level} + 1 as recursion_level
+        FROM example_table t
+        INNER JOIN result_df r ON t.id1 = r.id2
+    """.format(recursion_level=recursion_level))
+    
+    # Check if new rows were found
+    if df_next.rdd.isEmpty():
+        break
+    
+    # Append the new rows to the result
+    df_result = df_result.union(df_next)
+    
+    # Update the result view for the next iteration
+    df_next.createOrReplaceTempView("result_df")
+    
+    # Increment recursion level
+    recursion_level += 1
+
+# Final result
+df_result.show()
 
 
 
