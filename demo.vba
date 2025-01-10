@@ -1,3 +1,70 @@
+from pyspark.sql import functions as F
+
+# Sample Data
+data = [
+    ("A", "B"),
+    ("B", "C"),
+    ("C", "D"),
+    ("D", "E"),
+    ("E", None)
+]
+columns = ["id1", "id2"]
+df = spark.createDataFrame(data, columns)
+
+# Starting point
+start_id = "A"
+
+# Initialize the result DataFrame with the starting id1
+df_result = df.filter(df.id1 == start_id).withColumn("recursion_level", F.lit(0))
+
+# Iterate and apply recursion
+max_recursion_depth = 10  # A limit to avoid infinite recursion, adjust if needed
+recursion_level = 0
+
+while recursion_level < max_recursion_depth:
+    # Get the next level of results by joining the current DataFrame with the original DataFrame
+    df_next = df_result.alias("r").join(
+        df.alias("t"),
+        F.col("r.id2") == F.col("t.id1"),
+        "inner"
+    ).select(
+        F.col("t.id1"), F.col("t.id2"), (F.col("r.recursion_level") + 1).alias("recursion_level")
+    )
+    
+    # If no new rows are returned, break the loop
+    if df_next.count() == 0:
+        break
+    
+    # Append the results to the result DataFrame
+    df_result = df_result.union(df_next)
+    
+    # Update recursion level
+    recursion_level += 1
+
+# Show the final result
+df_result.show(truncate=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 start_id = "A"  # Initial starting id1 value
 recursion_level = 0
 
